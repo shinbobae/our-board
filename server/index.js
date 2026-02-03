@@ -17,6 +17,11 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log(`🚀 접속 성공! ${socket.id}`);
 
+  socket.on('send-path', (pathData) => {
+    console.log('server pathData 수신: ', pathData);
+    socket.broadcast.emit('receive-path', pathData);
+  });
+
   socket.on('disconnect', () => {
     console.log(`👋 접속 종료: ${socket.id}`);
   });

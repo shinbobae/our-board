@@ -17,6 +17,40 @@ function App() {
       console.log('서버에 연결되었습니다!');
     });
 
+    // 서버에서 다른 유저가 그린 선 데이터 받기
+    socketRef.current.on('receive-path', async (pathData) => {
+      console.log('다른 유저 선 수신!');
+
+      try {
+        const objects = await fabric.util.enlivenObjects([pathData]);
+        objects.forEach((obj) => {
+          const fabricObj = obj as fabric.FabricObject;
+          fabricObj.set({
+            selectable: false,
+            evented: false,
+          });
+          fabricCanvasRef.current?.add(fabricObj);
+        });
+        // 화면 갱신 (반드시 추가)
+        fabricCanvasRef.current?.renderAll();
+      } catch (err) {
+        console.error('실패:', err);
+      }
+
+      //  JSON -> Fabric
+      fabric.util.enlivenObjects(
+        [pathData],
+        (objects: fabric.Object[]) =>
+          objects.forEach((obj) => {
+            // 내가 그리는 선과 겹치지 않도록 설정 (선택사항)
+            obj.set({ selectable: false, evented: false });
+            fabricCanvasRef.current?.add(obj);
+            fabricCanvasRef.current?.renderAll();
+          }),
+        'fabric',
+      );
+    });
+
     // 2. Fabric 캔버스 초기화
     if (canvasRef.current && !fabricCanvasRef.current) {
       const canvas = new fabric.Canvas(canvasRef.current, {
@@ -32,15 +66,11 @@ function App() {
 
       fabricCanvasRef.current = canvas;
 
-      // 선 그리기 완료
+      // 선 그리기 완료 서버 전송
       canvas.on('path:created', (e) => {
-        const path = e.path || e;
-        console.log('path 경로: ', path);
-        if (path) {
-          const pathJSON = path.toJSON();
-          console.log('전송할 pathJSON: ', pathJSON);
-        }
-        // socketRef.current?.emit('drawing', options.path.toJSON());
+        const pathJSON = e.path.toJSON();
+        console.log('전송할 pathJSON: ', pathJSON);
+        socketRef.current?.emit('send-path', pathJSON);
       });
     }
 
